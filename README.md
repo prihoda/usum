@@ -59,10 +59,14 @@ You can control randomness and reproducibility using the `--seed` option.
 
 See `usum --help` for all plotting options.
 
+See [UMAP API Guide](https://umap-learn.readthedocs.io/en/latest/api.html) for more info about the UMAP options.
+
 - Use `--limit` to plot a random subset of records
 - Use `--width` and `--height` to control plot size in pixels
-- Use `--embed-min-dist` to control minimum distance between points in UMAP embedding
+- Use `--umap-spread` to control how close together the embedded points are in the UMAP embedding
+- Use `--umap-min-dist` to control minimum distance between points in UMAP embedding
 - Use `--neighbors` to control number of neighbors in UMAP graph
+
 
 ### Reusing previous results
 
