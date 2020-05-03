@@ -8,7 +8,8 @@ USUM uses [USEARCH](https://drive5.com/usearch/) and [UMAP](https://github.com/l
 
 ## Installation
 
-Install `USEARCH` manually: https://drive5.com/usearch/download.html (consider supporting the author by buying the 64bit license)
+Install `USEARCH` manually: https://drive5.com/usearch/download.html 
+<br>(consider supporting the author by buying the 64bit license)
 
 Install `usum` using PIP:
 
