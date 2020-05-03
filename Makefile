@@ -1,3 +1,5 @@
+.PHONY: dist
+
 release:
 ifndef VERSION
 	$(error "Usage: make release VERSION=0.1.9")

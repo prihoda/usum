@@ -31,6 +31,7 @@ def main(argv=None):
     parser.add_argument("--maxdist", type=float, help="USEARCH: Maximum distance which should be written (required if not using --resume).")
     parser.add_argument("--termdist", type=float, default=1.0, help="USEARCH: Identity threshold for terminating the calculation. This should be set higher than maxdist.")
     
+    parser.add_argument("--embed-min-dist", type=float, default=0.1, help="UMAP: Effective minimum distance between embedded points.")
     parser.add_argument("--neighbors", type=int, default=15, help="UMAP: The size of local neighborhood.")
     parser.add_argument("--theme", default='fire', help="UMAP: Plot color theme.")
     parser.add_argument("--width", type=int, default=800, help="UMAP: Plot width in pixels.")
@@ -54,6 +55,7 @@ def main(argv=None):
             resume=options.resume,
             limit=options.limit,
             random_state=options.seed,
+            embed_min_dist=options.embed_min_dist,
             neighbors=options.neighbors,
             theme=options.theme,
             width=options.width,
@@ -69,7 +71,7 @@ class UsumError(Exception):
 def usum(
         inputs, output, maxdist=None, termdist=1.0, 
         labels=None, force=False, resume=False, limit=None, random_state=1,
-        neighbors=15, theme='fire', width=800, height=800
+        embed_min_dist=0.1, neighbors=15, theme='fire', width=800, height=800
     ):
     """
     Compute sequence similarity and plot UMAP embedding.
@@ -83,6 +85,7 @@ def usum(
     :param limit: Use random number of records from each input file.
     :param random_state: Random seed for input subsampling and UMAP.
     :param neighbors: UMAP: The size of local neighborhood.
+    :param embed_min_dist: UMAP: Effective minimum distance between embedded points
     :param theme: UMAP: Plot color theme.
     :param width: UMAP: Plot width in pixels.
     :param height: UMAP: Plot height in pixels.
@@ -102,7 +105,7 @@ def usum(
     distance_path = os.path.join(output, 'distance.txt')
     png_path = os.path.join(output, 'umap.png')
     html_path = os.path.join(output, 'umap.html')
-            
+        
     if resume and os.path.exists(index_path) and os.path.exists(distance_path):
         print(f'> Resuming using previous results...')
         if limit is not None:
@@ -124,6 +127,10 @@ def usum(
         if not os.path.exists(output):
             os.mkdir(output)
 
+        if os.path.exists(index_path):
+            # Remove sequence TSV file to avoid reusing incomplete result
+            os.remove(index_path)
+            
         index = save_input_fasta(inputs, labels, fasta_path, limit=limit, random=(limit is not None), random_state=random_state)
         print(f'Saved {len(index):,} records to: {fasta_path}')
 
@@ -137,7 +144,7 @@ def usum(
     print(f'Loaded {len(index):,} x {len(index):,} distance matrix ({int(dist_matrix.nbytes / 1024 / 1024)} MB)')
     
     print(f'\n> Creating UMAP embedding with {neighbors} neighbors...')
-    reducer, embedding = fit_umap(dist_matrix, neighbors=neighbors, random_state=random_state)
+    reducer, embedding = fit_umap(dist_matrix, neighbors=neighbors, random_state=random_state, min_dist=embed_min_dist)
             
     index['umap1'] = embedding[:,0]
     index['umap2'] = embedding[:,1]
@@ -150,7 +157,7 @@ def usum(
     print(f'Saved UMAP PNG to: {png_path}')
     
     print('\n> Drawing interactive UMAP...')
-    p = umap.plot.interactive(reducer, labels=index['label'], theme=theme, hover_data=index);
+    p = umap.plot.interactive(reducer, labels=index['label'], theme=theme, width=width, height=height, hover_data=index);
     bokeh.plotting.output_file(html_path)
     bokeh.plotting.save(p)
     print(f'Saved UMAP HTML to: {html_path}')
@@ -230,10 +237,11 @@ def load_sparse_dist_matrix(distance_path):
     return (1 - dist_matrix.toarray())
     
     
-def fit_umap(dist_matrix, random_state=None, neighbors=15):
+def fit_umap(dist_matrix, random_state=None, neighbors=15, min_dist=0.1):
     reducer = umap.UMAP(
         n_neighbors=neighbors,
         random_state=random_state,
+        min_dist=min_dist,
         metric='precomputed'
     )
     embedding = reducer.fit_transform(dist_matrix)
