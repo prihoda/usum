@@ -10,9 +10,6 @@ endif
 	git push
 	make dist
 	twine upload dist/usum-$(VERSION)*
-	git checkout develop
-	git pull
-	git rebase origin/master
 	@echo "Create a new release version on: https://github.com/prihoda/usum/releases"
 
 dist:
