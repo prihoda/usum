@@ -20,6 +20,8 @@ pip install usum
 
 ### Minimal example
 
+Plot input protein or DNA sequences in FASTA format:
+
 ```bash
 usum sequences.fa --maxdist 0.2 --termdist 0.3 --output umap
 ```
@@ -53,5 +55,6 @@ usum(inputs=['input.fa'], output='usum', maxdist=0.2, termdist=0.3)
 ## How it works
 
 - A sparse distance matrix is calculated using USEARCH [calc_distmx](https://drive5.com/usearch/manual/cmd_calc_distmx.html) command. 
-- The distance matrix is embedded as `precomputed` metric using [UMAP](https://github.com/lmcinnes/umap) 
+- The distances are based on % identity, so the method is agnostic to sequence type (DNA or protein)
+- The distance matrix is embedded as a `precomputed` metric using [UMAP](https://github.com/lmcinnes/umap) 
 - The embedding is plotted using [umap.plot](https://umap-learn.readthedocs.io/en/latest/plotting.html).
