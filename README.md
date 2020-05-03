@@ -21,7 +21,7 @@ pip install usum
 
 Use `usum` to plot input protein or DNA sequences in FASTA format.
 
-**Note:** `USEARCH` is not built for long sequences
+Show all available options using `usum --help`
 
 ### Minimal example
 
@@ -54,6 +54,15 @@ usum first.fa second.fa --labels First Second --limit 10000 --maxdist 0.2 --term
 ```
 
 You can control randomness and reproducibility using the `--seed` option.
+
+### Plotting options
+
+See `usum --help` for all plotting options.
+
+- Use `--limit` to plot a random subset of records
+- Use `--width` and `--height` to control plot size in pixels
+- Use `--embed-min-dist` to control minimum distance between points in UMAP embedding
+- Use `--neighbors` to control number of neighbors in UMAP graph
 
 ### Reusing previous results
 
