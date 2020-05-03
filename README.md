@@ -19,12 +19,15 @@ pip install usum
 
 ## Usage
 
+Use `usum` to plot input protein or DNA sequences in FASTA format.
+
+**Note:** `USEARCH` is not built for long sequences
+
 ### Minimal example
 
-Plot input protein or DNA sequences in FASTA format:
 
 ```bash
-usum sequences.fa --maxdist 0.2 --termdist 0.3 --output umap
+usum example.fa --maxdist 0.2 --termdist 0.3 --output example
 ```
 
 ### Multiple input files with labels
@@ -40,6 +43,28 @@ This will produce a PNG plot:
 An interactive [Bokeh](https://bokeh.org) HTML plot is also created:
 
 ![UMAP Bokeh example](docs/example2.png?raw=true "UMAP Bokeh example")
+
+### Plotting random subset
+
+You can use `--limit` to extract and plot a random subset of the input sequences.
+
+```bash
+# Plot 10k sequences from each input file
+usum first.fa second.fa --labels First Second --limit 10000 --maxdist 0.2 --termdist 0.3 --output umap
+```
+
+You can control randomness and reproducibility using the `--seed` option.
+
+### Reusing previous results
+
+When changing just the plot options, you can use `--resume` to reuse previous results from the output folder.
+
+**Warning** This will reuse the previous distance matrix, so changes to limits or USEARCH args won't take effect.
+
+```bash
+# Reuse result from umap output directory
+usum --resume --output umap --width 600 --height 600 --theme fire
+```
 
 ### Programmatic use
 

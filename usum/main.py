@@ -19,7 +19,7 @@ import itertools
 
 def main(argv=None):
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("inputs", nargs='+', help="Input FASTA sequence file paths.")
+    parser.add_argument("inputs", nargs='*', help="Input FASTA sequence file paths.")
     parser.add_argument("--labels", nargs='*', required=False, help="Input file labels.")
     parser.add_argument("--output", required=True, help="Output directory path.")
     parser.add_argument("-f", "--force", action="store_true", default=False, help="Force overwrite output.")
@@ -28,11 +28,11 @@ def main(argv=None):
     parser.add_argument("--limit", type=int, help="Use random number of records from each input file.")
     parser.add_argument("--seed", default=1, type=int, help="Random seed for input subsampling and UMAP.")
     
-    parser.add_argument("--maxdist", type=float, required=True, help="USEARCH: Maximum distance which should be written.")
+    parser.add_argument("--maxdist", type=float, help="USEARCH: Maximum distance which should be written (required if not using --resume).")
     parser.add_argument("--termdist", type=float, default=1.0, help="USEARCH: Identity threshold for terminating the calculation. This should be set higher than maxdist.")
     
     parser.add_argument("--neighbors", type=int, default=15, help="UMAP: The size of local neighborhood.")
-    parser.add_argument("--theme", default='viridis', help="UMAP: Plot color theme.")
+    parser.add_argument("--theme", default='fire', help="UMAP: Plot color theme.")
     parser.add_argument("--width", type=int, default=800, help="UMAP: Plot width in pixels.")
     parser.add_argument("--height", type=int, default=800, help="UMAP: Plot height in pixels.")
     
@@ -40,27 +40,36 @@ def main(argv=None):
     
     warnings.filterwarnings("ignore", message="using precomputed metric")
 
-    usum(
-        inputs=options.inputs, 
-        output=options.output, 
-        maxdist=options.maxdist, 
-        termdist=options.termdist,
-        labels=options.labels, 
-        force=options.force,
-        resume=options.resume,
-        limit=options.limit,
-        random_state=options.seed,
-        neighbors=options.neighbors,
-        theme=options.theme,
-        width=options.width,
-        height=options.height
-    )
+    if not options.resume and not options.inputs:
+        parser.error("Input file paths are required when not using --resume")
 
+    try:
+        usum(
+            inputs=options.inputs, 
+            output=options.output, 
+            maxdist=options.maxdist, 
+            termdist=options.termdist,
+            labels=options.labels, 
+            force=options.force,
+            resume=options.resume,
+            limit=options.limit,
+            random_state=options.seed,
+            neighbors=options.neighbors,
+            theme=options.theme,
+            width=options.width,
+            height=options.height
+        )
+    except UsumError as e:
+        print(str(e), file=sys.stderr)
+        sys.exit(2)
+
+class UsumError(Exception):
+    pass
     
 def usum(
-        inputs, output, maxdist, termdist=1.0, 
+        inputs, output, maxdist=None, termdist=1.0, 
         labels=None, force=False, resume=False, limit=None, random_state=1,
-        neighbors=15, theme='viridis', width=800, height=800
+        neighbors=15, theme='fire', width=800, height=800
     ):
     """
     Compute sequence similarity and plot UMAP embedding.
@@ -80,13 +89,8 @@ def usum(
     :return: tuple with UMAP reducer and sequence DataFrame
     """
     if not force and not resume and (os.path.exists(output) and (os.listdir(output) or not os.path.isdir(output))):
-        print(f'Output path exists and is not empty: {output}', file=sys.stderr)
-        print('Run with -f --force to overwrite', file=sys.stderr)
-        sys.exit(2)
-    
-    if not os.path.exists(output):
-        os.mkdir(output)
-    
+        raise UsumError(f'Output path exists and is not empty: {output}. \nRun with -f --force to overwrite or --resume to resume')
+
     if labels:
         if len(labels) != len(inputs):
             raise ValueError('Labels have to be provided for each input file (--labels a b c)')
@@ -98,18 +102,34 @@ def usum(
     distance_path = os.path.join(output, 'distance.txt')
     png_path = os.path.join(output, 'umap.png')
     html_path = os.path.join(output, 'umap.html')
-    
+            
     if resume and os.path.exists(index_path) and os.path.exists(distance_path):
         print(f'> Resuming using previous results...')
+        if limit is not None:
+            print('WARNING: --limit specified but is ignored')
+        if maxdist is not None:
+            print('WARNING: --maxdist specified but is ignored')
         index = pd.read_csv(index_path, sep='\t')
     else:
         print(f'> Writing FASTA records from {len(inputs)} paths...')
         if resume:
-            print('Warning: No previous results found, computing from scratch!')
+            print('WARNING: No previous results found, computing from scratch!')
+
+        if not inputs:
+            raise UsumError('Input file paths are required')
+            
+        if maxdist is None:
+            raise UsumError('Argument --maxdist is required')
+                    
+        if not os.path.exists(output):
+            os.mkdir(output)
+
         index = save_input_fasta(inputs, labels, fasta_path, limit=limit, random=(limit is not None), random_state=random_state)
         print(f'Saved {len(index):,} records to: {fasta_path}')
 
         print(f'\n> Creating sparse {len(index):,} x {len(index):,} distance matrix with {maxdist} max distance...')
+        if len(index) > 10000 and not limit:
+            print('NOTE: This might take some time. Consider using --limit to compare just a random subset.')
         run_usearch(fasta_path, distance_path, maxdist=maxdist, termdist=termdist)
     
     dist_matrix = load_sparse_dist_matrix(distance_path)
@@ -186,9 +206,7 @@ def save_input_fasta(inputs, labels, fasta_path, random=True, limit=None, random
 
 def run_usearch(fasta_path, distance_path, maxdist, termdist=1.0):
     if not shutil.which('usearch'):
-        print('Missing usearch dependency on PATH', file=sys.stderr)
-        print('Install it from: https://drive5.com/usearch/download.html', file=sys.stderr)
-        sys.exit(2)
+        raise UsumError('Missing usearch dependency on PATH. \nInstall it from: https://drive5.com/usearch/download.html')  
         
     cmd = [
         'usearch',
