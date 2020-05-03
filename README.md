@@ -2,9 +2,9 @@
 
 USUM uses [USEARCH](https://drive5.com/usearch/) and [UMAP](https://github.com/lmcinnes/umap) to plot DNA 🧬and protein 🧶 sequence similarity embeddings.
 
-![PyPI - Downloads](https://img.shields.io/pypi/dm/deepbgc.svg?color=green&label=PyPI%20downloads)
-[![PyPI license](https://img.shields.io/pypi/l/deepbgc.svg)](https://pypi.python.org/pypi/deepbgc/)
-[![PyPI version](https://badge.fury.io/py/deepbgc.svg)](https://badge.fury.io/py/deepbgc)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/usum.svg?color=green&label=PyPI%20downloads)](https://pypi.python.org/pypi/usum/)
+[![PyPI license](https://img.shields.io/pypi/l/usum.svg)](https://pypi.python.org/pypi/usum/)
+[![PyPI version](https://badge.fury.io/py/usum.svg)](https://pypi.python.org/pypi/usum/)
 
 ## Installation
 
