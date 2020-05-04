@@ -16,6 +16,8 @@ import numpy as np
 import umap.plot
 import warnings
 import itertools
+from sklearn.manifold import TSNE
+from matplotlib import pyplot as plt
 
 def main(argv=None):
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -146,6 +148,12 @@ def usum(
     # with {dist_matrix.getnnx():,} non-null values
     print(f'Loaded {len(index):,} x {len(index):,} distance matrix ({int(dist_matrix.nbytes / 1024 / 1024)} MB)')
     
+    #tsne = TSNE(metric='precomputed', perplexity=neighbors)
+    #t = tsne.fit_transform(dist_matrix)
+    #plt.subplots(figsize=(10, 10))
+    #plt.scatter(t[:,0], t[:,1], s=3)
+    #plt.savefig(os.path.join(output, 'tsne.png'), bbox_inches='tight')
+    
     print(f'\n> Creating UMAP embedding with {neighbors} neighbors...')
     reducer, embedding = fit_umap(dist_matrix, neighbors=neighbors, random_state=random_state, min_dist=umap_min_dist, spread=umap_spread)
             
@@ -164,7 +172,7 @@ def usum(
     bokeh.plotting.output_file(html_path)
     bokeh.plotting.save(p)
     print(f'Saved UMAP HTML to: {html_path}')
-
+    
     print(f'\nDone. Saved to: {output}')
     return reducer, index
 
@@ -231,13 +239,14 @@ def run_usearch(fasta_path, distance_path, maxdist, termdist=1.0):
     
 def load_sparse_dist_matrix(distance_path):
     dist_matrix = pd.read_csv(distance_path, header=None, sep='\t')
-
-    row = dist_matrix[0]
-    col = dist_matrix[1]
-    data = 1-dist_matrix[2]
+    
+    diagonal = dist_matrix[0] == dist_matrix[1]
+    row = np.concatenate([dist_matrix[0], dist_matrix[1][~diagonal]])
+    col = np.concatenate([dist_matrix[1], dist_matrix[0][~diagonal]])
+    data = 1 - np.concatenate([dist_matrix[2], dist_matrix[2][~diagonal]])
 
     dist_matrix = sparse.csr_matrix((data, (row, col)), dtype=np.float32)
-    return (1 - dist_matrix.toarray())
+    return 1 - dist_matrix.toarray()
     
     
 def fit_umap(dist_matrix, random_state=None, neighbors=15, min_dist=0.1, spread=1.0):
