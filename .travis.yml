@@ -1,0 +1,15 @@
+dist: xenial
+language: python
+python:
+  - "3.6"
+  - "3.7"
+# command to install dependencies
+install:
+  - pip install .
+  - pip install pytest
+  - pip install pytest-mock
+# command to run tests
+script:
+  - usum --help
+  - pytest test
+

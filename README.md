@@ -1,10 +1,11 @@
 # USUM: Plotting sequence similarity using USEARCH & UMAP
 
-USUM uses [USEARCH](https://drive5.com/usearch/) and [UMAP](https://github.com/lmcinnes/umap) to plot DNA 🧬and protein 🧶 sequence similarity embeddings.
+USUM uses [USEARCH](https://drive5.com/usearch/) and [UMAP](https://github.com/lmcinnes/umap) (or [t-SNE](https://scikit-learn.org/stable/modules/generated/sklearn.manifold.TSNE.html)) to plot DNA 🧬 and protein 🧶 sequence similarity embeddings.
 
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/usum.svg?color=green&label=PyPI%20downloads)](https://pypi.python.org/pypi/usum/)
 [![PyPI license](https://img.shields.io/pypi/l/usum.svg)](https://pypi.python.org/pypi/usum/)
 [![PyPI version](https://badge.fury.io/py/usum.svg)](https://pypi.python.org/pypi/usum/)
+[![CI](https://api.travis-ci.org/prihoda/usum.svg?branch=master)](https://travis-ci.org/prihoda/usum)
 
 ## Installation
 
@@ -33,7 +34,7 @@ usum example.fa --maxdist 0.2 --termdist 0.3 --output example
 ### Multiple input files with labels
 
 ```bash
-usum first.fa second.fa --labels First Second --maxdist 0.2 --termdist 0.3 --output umap
+usum first.fa second.fa --labels First Second --maxdist 0.2 --termdist 0.3 --output example
 ```
 
 This will produce a PNG plot:
@@ -44,13 +45,24 @@ An interactive [Bokeh](https://bokeh.org) HTML plot is also created:
 
 ![UMAP Bokeh example](docs/example2.png?raw=true "UMAP Bokeh example")
 
+### Using t-SNE instead of UMAP
+
+You can also produce a t-SNE plot using the `--tsne` flag.
+
+```bash
+usum first.fa second.fa --labels First Second --maxdist 0.2 --termdist 0.3 --tsne --output example
+```
+
+This will produce a PNG plot:
+
+![UMAP static example](docs/example1.png?raw=true "UMAP static example")
 ### Plotting random subset
 
 You can use `--limit` to extract and plot a random subset of the input sequences.
 
 ```bash
 # Plot 10k sequences from each input file
-usum first.fa second.fa --labels First Second --limit 10000 --maxdist 0.2 --termdist 0.3 --output umap
+usum first.fa second.fa --labels First Second --limit 10000 --maxdist 0.2 --termdist 0.3 --output example
 ```
 
 You can control randomness and reproducibility using the `--seed` option.
@@ -63,6 +75,8 @@ See [UMAP API Guide](https://umap-learn.readthedocs.io/en/latest/api.html) for m
 
 - Use `--limit` to plot a random subset of records
 - Use `--width` and `--height` to control plot size in pixels
+- Use `--resume` to reuse previous distance matrix from the output folder
+- Use `--tsne` to produce a t-SNE embedding instead of UMAP (you can use this with `--resume`)
 - Use `--umap-spread` to control how close together the embedded points are in the UMAP embedding
 - Use `--umap-min-dist` to control minimum distance between points in UMAP embedding
 - Use `--neighbors` to control number of neighbors in UMAP graph
@@ -76,7 +90,7 @@ When changing just the plot options, you can use `--resume` to reuse previous re
 
 ```bash
 # Reuse result from umap output directory
-usum --resume --output umap --width 600 --height 600 --theme fire
+usum --resume --output example --width 600 --height 600 --theme fire
 ```
 
 ### Programmatic use

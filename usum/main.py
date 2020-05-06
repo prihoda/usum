@@ -18,6 +18,7 @@ import warnings
 import itertools
 from sklearn.manifold import TSNE
 from matplotlib import pyplot as plt
+from umap.plot import _matplotlib_points, _themes, _select_font_color, _datashade_points
 
 def main(argv=None):
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -36,10 +37,13 @@ def main(argv=None):
     parser.add_argument("--umap-min-dist", type=float, default=0.1, help="UMAP: Effective minimum distance between embedded points, relative to spread.")
     parser.add_argument("--umap-spread", type=float, default=1.0, help="UMAP: The effective scale of embedded points.")
     parser.add_argument("--neighbors", type=int, default=15, help="UMAP: The size of local neighborhood.")
-    parser.add_argument("--theme", default='fire', help="UMAP: Plot color theme.")
-    parser.add_argument("--width", type=int, default=800, help="UMAP: Plot width in pixels.")
-    parser.add_argument("--height", type=int, default=800, help="UMAP: Plot height in pixels.")
+
+    parser.add_argument("--theme", default='fire', help="Plot color theme.")
+    parser.add_argument("--width", type=int, default=800, help="Plot width in pixels.")
+    parser.add_argument("--height", type=int, default=800, help="Plot height in pixels.")
     
+    parser.add_argument("--tsne", action="store_true", default=False, help="Run t-SNE instead of UMAP.")
+
     options = parser.parse_args()
     
     warnings.filterwarnings("ignore", message="using precomputed metric")
@@ -61,6 +65,7 @@ def main(argv=None):
             umap_min_dist=options.umap_min_dist,
             umap_spread=options.umap_spread,
             neighbors=options.neighbors,
+            method='tsne' if options.tsne else 'umap',
             theme=options.theme,
             width=options.width,
             height=options.height
@@ -75,7 +80,7 @@ class UsumError(Exception):
 def usum(
         inputs, output, maxdist=None, termdist=1.0, 
         labels=None, force=False, resume=False, limit=None, random_state=1,
-        umap_min_dist=0.1, umap_spread=1.0, neighbors=15, theme='fire', width=800, height=800
+        umap_min_dist=0.1, umap_spread=1.0, method='umap', neighbors=15, theme='fire', width=800, height=800
     ):
     """
     Compute sequence similarity and plot UMAP embedding.
@@ -88,12 +93,13 @@ def usum(
     :param resume: Resume using existing results from output directory.
     :param limit: Use random number of records from each input file.
     :param random_state: Random seed for input subsampling and UMAP.
-    :param neighbors: UMAP: The size of local neighborhood.
     :param umap_min_dist: UMAP: Effective minimum distance between embedded points
     :param umap_spread: UMAP: The effective scale of embedded points
-    :param theme: UMAP: Plot color theme.
-    :param width: UMAP: Plot width in pixels.
-    :param height: UMAP: Plot height in pixels.
+    :param neighbors: UMAP: The size of local neighborhood.
+    :param method: Embedding method (umap, tsne).
+    :param theme: Plot color theme.
+    :param width: Plot width in pixels.
+    :param height: Plot height in pixels.
     :return: tuple with UMAP reducer and sequence DataFrame
     """
     if not force and not resume and (os.path.exists(output) and (os.listdir(output) or not os.path.isdir(output))):
@@ -106,10 +112,10 @@ def usum(
         labels = [os.path.splitext(os.path.basename(path))[0] for path in inputs]
 
     fasta_path = os.path.join(output, 'input.fa')
-    index_path = os.path.join(output, 'umap.tsv')
     distance_path = os.path.join(output, 'distance.txt')
-    png_path = os.path.join(output, 'umap.png')
-    html_path = os.path.join(output, 'umap.html')
+    index_path = os.path.join(output, 'sequences.tsv')
+    png_path = os.path.join(output, method+'.png')
+    html_path = os.path.join(output, method+'.html')
         
     if resume and os.path.exists(index_path) and os.path.exists(distance_path):
         print(f'> Resuming using previous results...')
@@ -148,30 +154,34 @@ def usum(
     # with {dist_matrix.getnnx():,} non-null values
     print(f'Loaded {len(index):,} x {len(index):,} distance matrix ({int(dist_matrix.nbytes / 1024 / 1024)} MB)')
     
-    #tsne = TSNE(metric='precomputed', perplexity=neighbors)
-    #t = tsne.fit_transform(dist_matrix)
-    #plt.subplots(figsize=(10, 10))
-    #plt.scatter(t[:,0], t[:,1], s=3)
-    #plt.savefig(os.path.join(output, 'tsne.png'), bbox_inches='tight')
-    
-    print(f'\n> Creating UMAP embedding with {neighbors} neighbors...')
-    reducer, embedding = fit_umap(dist_matrix, neighbors=neighbors, random_state=random_state, min_dist=umap_min_dist, spread=umap_spread)
-            
-    index['umap1'] = embedding[:,0]
-    index['umap2'] = embedding[:,1]
+    if method == 'tsne':
+        print(f'\n> Creating t-SNE embedding...')
+        reducer, embedding = fit_tsne(dist_matrix, random_state=random_state)
+                
+        index['tsne1'] = embedding[:,0]
+        index['tsne2'] = embedding[:,1]
+    elif method == 'umap':
+        print(f'\n> Creating UMAP embedding with {neighbors} neighbors...')
+        reducer, embedding = fit_umap(dist_matrix, neighbors=neighbors, random_state=random_state, min_dist=umap_min_dist, spread=umap_spread)
+                
+        index['umap1'] = embedding[:,0]
+        index['umap2'] = embedding[:,1]
+    else:
+        raise ValueError(f'Unknown embedding method: {method}')
+
     index.to_csv(index_path, sep='\t', index=False)
     print(f'Saved sequences TSV to: {index_path}')
 
-    print('\n> Drawing UMAP PNG...')
-    ax = umap.plot.points(reducer, labels=index['label'], theme=theme, width=width, height=height);
+    print('\n> Drawing PNG...')
+    ax = plot_points(reducer, labels=index['label'], theme=theme, width=width, height=height);
     ax.figure.savefig(png_path, bbox_inches='tight')
-    print(f'Saved UMAP PNG to: {png_path}')
+    print(f'Saved PNG to: {png_path}')
     
-    print('\n> Drawing interactive UMAP...')
+    print('\n> Drawing interactive plot...')
     p = umap.plot.interactive(reducer, labels=index['label'], theme=theme, width=width, height=height, hover_data=index);
     bokeh.plotting.output_file(html_path)
     bokeh.plotting.save(p)
-    print(f'Saved UMAP HTML to: {html_path}')
+    print(f'Saved plot HTML to: {html_path}')
     
     print(f'\nDone. Saved to: {output}')
     return reducer, index
@@ -250,6 +260,7 @@ def load_sparse_dist_matrix(distance_path):
     
     
 def fit_umap(dist_matrix, random_state=None, neighbors=15, min_dist=0.1, spread=1.0):
+    print(dist_matrix)
     reducer = umap.UMAP(
         n_neighbors=neighbors,
         random_state=random_state,
@@ -259,3 +270,82 @@ def fit_umap(dist_matrix, random_state=None, neighbors=15, min_dist=0.1, spread=
     )
     embedding = reducer.fit_transform(dist_matrix)
     return reducer, embedding
+
+    
+def fit_tsne(dist_matrix, random_state=None):
+    reducer = TSNE(
+        random_state=random_state,
+        metric='precomputed'
+    )
+    embedding = reducer.fit_transform(dist_matrix)
+    return reducer, embedding
+
+# Taken from from umap.plot, adjusted for t-SNE
+def plot_points(
+    reducer_object,
+    labels=None,
+    values=None,
+    theme=None,
+    cmap="Blues",
+    color_key=None,
+    color_key_cmap="Spectral",
+    background="white",
+    width=800,
+    height=800,
+    show_legend=True,
+):
+
+    if theme is not None:
+        cmap = _themes[theme]["cmap"]
+        color_key_cmap = _themes[theme]["color_key_cmap"]
+        background = _themes[theme]["background"]
+
+    if labels is not None and values is not None:
+        raise ValueError(
+            "Conflicting options; only one of labels or values should be set"
+        )
+
+    points = reducer_object.embedding_
+
+    if points.shape[1] != 2:
+        raise ValueError("Plotting is currently only implemented for 2D embeddings")
+
+    font_color = _select_font_color(background)
+
+    dpi = plt.rcParams["figure.dpi"]
+    fig = plt.figure(figsize=(width / dpi, height / dpi))
+    ax = fig.add_subplot(111)
+
+    if points.shape[0] <= width * height // 10:
+        ax = _matplotlib_points(
+            points,
+            ax,
+            labels,
+            values,
+            cmap,
+            color_key,
+            color_key_cmap,
+            background,
+            width,
+            height,
+            show_legend,
+        )
+    else:
+        ax = _datashade_points(
+            points,
+            ax,
+            labels,
+            values,
+            cmap,
+            color_key,
+            color_key_cmap,
+            background,
+            width,
+            height,
+            show_legend,
+        )
+
+    ax.set(xticks=[], yticks=[])
+
+    return ax
+
