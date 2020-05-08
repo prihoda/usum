@@ -47,7 +47,9 @@ def test_usum_umap(tmpdir, mocker):
         os.path.join(tmpdir, 'input.fa'), 
         os.path.join(tmpdir, 'distance.txt'), 
         maxdist=0.3, 
-        termdist=0.5
+        termdist=0.5,
+        threads=None,
+        dbstep=None
     )
 
     assert os.path.exists(tmpdir)
@@ -72,7 +74,9 @@ def test_usum_tsne(tmpdir, mocker):
         os.path.join(tmpdir, 'input.fa'), 
         os.path.join(tmpdir, 'distance.txt'), 
         maxdist=0.3, 
-        termdist=0.5
+        termdist=0.5,
+        threads=None,
+        dbstep=None
     )
 
     assert os.path.exists(tmpdir)
